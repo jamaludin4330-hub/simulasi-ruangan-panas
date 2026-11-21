@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulator Suhu Ruangan | TA-07 Pemodelan dan Simulasi</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"/></svg>
+      </div>
+      <div>
+        <h1>Simulator Suhu Ruangan</h1>
+        <p>TA-07 Pemodelan dan Simulasi &middot; Metode Euler</p>
+      </div>
+    </div>
+    <nav class="tabs" role="tablist" aria-label="Menu utama">
+      <button class="tab active" role="tab" data-tab="sim" aria-selected="true">Simulasi</button>
+      <button class="tab" role="tab" data-tab="step" aria-selected="false">Uji Step Size</button>
+      <button class="tab" role="tab" data-tab="data" aria-selected="false">Tabel Data</button>
+      <button class="tab" role="tab" data-tab="model" aria-selected="false">Model dan Penjelasan</button>
+    </nav>
+  </header>
+
+  <main class="layout">
+
+    <!-- ================= PANEL PARAMETER ================= -->
+    <aside class="panel" aria-label="Panel parameter">
+
+      <section class="block">
+        <h2 class="block-title">Skenario cepat</h2>
+        <div class="preset-grid">
+          <button class="chip preset" data-preset="baseline" aria-pressed="true">Baseline TP-07</button>
+          <button class="chip preset" data-preset="pemanas50" aria-pressed="false">Pemanas turun 50%</button>
+          <button class="chip preset" data-preset="jendela" aria-pressed="false">Jendela dibuka</button>
+          <button class="chip preset" data-preset="uji" aria-pressed="false">Step + sinusoida</button>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2 class="block-title">Ruangan</h2>
+        <div class="field" data-key="C" data-min="5000" data-max="500000" data-step="1000">
+          <label for="C">Kapasitas panas C <span class="unit">J/K</span></label>
+          <div class="field-row"><input type="number" id="C"><input type="range" aria-label="Geser nilai C"></div>
+        </div>
+        <div class="field" data-key="UA" data-min="2" data-max="100" data-step="0.5">
+          <label for="UA">Kehilangan panas UA <span class="unit">W/K</span></label>
+          <div class="field-row"><input type="number" id="UA"><input type="range" aria-label="Geser nilai UA"></div>
+        </div>
+        <div class="field" data-key="T0" data-min="10" data-max="40" data-step="0.5">
+          <label for="T0">Suhu awal T(0) <span class="unit">&deg;C</span></label>
+          <div class="field-row"><input type="number" id="T0"><input type="range" aria-label="Geser nilai T0"></div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2 class="block-title">Pemanas</h2>
+        <div class="segmented" role="radiogroup" aria-label="Mode pemanas">
+          <label><input type="radio" name="heater_mode" value="konstan" checked><span>Konstan</span></label>
+          <label><input type="radio" name="heater_mode" value="step"><span>Step (menyala tiba-tiba)</span></label>
+        </div>
+        <div class="field" data-key="Q" data-min="0" data-max="1000" data-step="10">
+          <label for="Q">Daya pemanas Q <span class="unit">W</span></label>
+          <div class="field-row"><input type="number" id="Q"><input type="range" aria-label="Geser nilai Q"></div>
+        </div>
+        <div class="field cond" id="grp-step" data-key="tstep" data-min="0" data-max="600" data-step="5" hidden>
+          <label for="tstep">Pemanas menyala pada menit ke- <span class="unit">menit</span></label>
+          <div class="field-row"><input type="number" id="tstep"><input type="range" aria-label="Geser waktu menyala"></div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2 class="block-title">Lingkungan</h2>
+        <div class="segmented" role="radiogroup" aria-label="Mode suhu luar">
+          <label><input type="radio" name="outside_mode" value="konstan" checked><span>Suhu luar konstan</span></label>
+          <label><input type="radio" name="outside_mode" value="sinus"><span>Sinusoida</span></label>
+        </div>
+        <div class="field" data-key="T_luar" data-min="0" data-max="40" data-step="0.5">
+          <label for="T_luar">Suhu luar (rata-rata) <span class="unit">&deg;C</span></label>
+          <div class="field-row"><input type="number" id="T_luar"><input type="range" aria-label="Geser suhu luar"></div>
+        </div>
+        <div class="field cond grp-sinus" data-key="amp" data-min="0" data-max="10" data-step="0.5" hidden>
+          <label for="amp">Amplitudo <span class="unit">&deg;C</span></label>
+          <div class="field-row"><input type="number" id="amp"><input type="range" aria-label="Geser amplitudo"></div>
+        </div>
+        <div class="field cond grp-sinus" data-key="period" data-min="1" data-max="48" data-step="1" hidden>
+          <label for="period">Periode <span class="unit">jam</span></label>
+          <div class="field-row"><input type="number" id="period"><input type="range" aria-label="Geser periode"></div>
+        </div>
+      </section>
+
+      <section class="block">
+        <h2 class="block-title">Numerik</h2>
+        <div class="field">
+          <label for="dt">Step size dt <span class="unit">detik</span></label>
+          <select id="dt">
+            <option value="1">1</option>
+            <option value="5">5</option>
+            <option value="10" selected>10</option>
+            <option value="30">30</option>
+            <option value="60">60</option>
+            <option value="300">300</option>
+            <option value="600">600</option>
+          </select>
+        </div>
+        <div class="field" data-key="jam" data-min="1" data-max="48" data-step="1">
+          <label for="jam">Lama simulasi <span class="unit">jam</span></label>
+          <div class="field-row"><input type="number" id="jam"><input type="range" aria-label="Geser lama simulasi"></div>
+        </div>
+      </section>
+
+      <div class="actions">
+        <button class="btn primary" id="btn-run">Jalankan Simulasi</button>
+        <button class="btn ghost" id="btn-reset">Reset</button>
+      </div>
+      <p class="hint">Grafik ikut diperbarui otomatis saat nilai diubah.</p>
+    </aside>
+
+    <!-- ================= KONTEN ================= -->
+    <section class="content">
+
+      <div id="alert" class="alert" role="alert" hidden></div>
+
+      <div class="stats" aria-live="polite">
+        <article class="stat"><span class="stat-label">Suhu steady state</span><strong id="st-tss">-</strong><span class="stat-note" id="st-tss-note">&nbsp;</span></article>
+        <article class="stat"><span class="stat-label">Konstanta waktu &tau;</span><strong id="st-tau">-</strong><span class="stat-note">tau = C / UA</span></article>
+        <article class="stat"><span class="stat-label">Suhu akhir simulasi</span><strong id="st-end">-</strong><span class="stat-note" id="st-end-note">&nbsp;</span></article>
+        <article class="stat"><span class="stat-label">Galat maks. vs analitik</span><strong id="st-err">-</strong><span class="stat-note" id="st-err-note">&nbsp;</span></article>
+      </div>
+
+      <!-- TAB SIMULASI -->
+      <div class="tabpanel active" id="tab-sim">
+        <div class="card">
+          <div class="card-head">
+            <h2>Suhu ruangan terhadap waktu</h2>
+            <div class="toggles" role="group" aria-label="Tampilan grafik">
+              <button class="chip toggle" data-series="base" aria-pressed="true">Baseline</button>
+              <button class="chip toggle" data-series="ana" aria-pressed="true">Solusi analitik</button>
+              <button class="chip toggle" data-series="out" aria-pressed="true">Suhu luar</button>
+              <button class="chip toggle" data-series="ss" aria-pressed="true">Steady state</button>
+            </div>
+          </div>
+          <div class="chart-box tall"><canvas id="chart-temp"></canvas></div>
+          <div class="chart-box short"><canvas id="chart-q"></canvas></div>
+          <div class="card-foot">
+            <button class="btn small" id="btn-png">Unduh grafik (PNG)</button>
+            <button class="btn small" id="btn-csv">Unduh data (CSV)</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Interpretasi otomatis</h2>
+          <div id="interpretasi" class="prose"></div>
+        </div>
+      </div>
+
+      <!-- TAB STEP SIZE -->
+      <div class="tabpanel" id="tab-step" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>Pengaruh step size terhadap akurasi Euler</h2>
+            <button class="btn small primary" id="btn-step">Bandingkan dt = 600, 100, 10 detik</button>
+          </div>
+          <p class="muted">Memakai parameter di panel kiri dengan input konstan. Garis analitik adalah solusi eksak sebagai acuan.</p>
+          <div class="chart-box tall"><canvas id="chart-step"></canvas></div>
+          <div class="table-wrap">
+            <table class="table" id="tbl-step">
+              <thead><tr><th>dt (detik)</th><th>Jumlah langkah</th><th>Galat maksimum (&deg;C)</th><th>Status kestabilan</th></tr></thead>
+              <tbody><tr><td colspan="4" class="muted">Tekan tombol di atas untuk menjalankan perbandingan.</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB DATA -->
+      <div class="tabpanel" id="tab-data" hidden>
+        <div class="card">
+          <div class="card-head">
+            <h2>Tabel hasil simulasi</h2>
+            <div class="pager">
+              <button class="btn small" id="pg-prev">Sebelumnya</button>
+              <span id="pg-info" class="muted">-</span>
+              <button class="btn small" id="pg-next">Berikutnya</button>
+            </div>
+          </div>
+          <p class="muted" id="data-note"></p>
+          <div class="table-wrap">
+            <table class="table" id="tbl-data">
+              <thead><tr><th>Waktu (menit)</th><th>Suhu ruangan (&deg;C)</th><th>Suhu luar (&deg;C)</th><th>Q pemanas (W)</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB MODEL -->
+      <div class="tabpanel" id="tab-model" hidden>
+        <div class="card">
+          <h2>Struktur stock-flow</h2>
+          <div class="diagram">
+            <svg viewBox="0 0 760 250" role="img" aria-label="Diagram stock flow suhu ruangan">
+              <defs>
+                <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0L10 5L0 10z" class="d-fill"/></marker>
+              </defs>
+              <rect x="40" y="95" width="120" height="60" rx="14" class="d-src"/>
+              <text x="100" y="130" text-anchor="middle" class="d-text">Pemanas</text>
+              <line x1="160" y1="125" x2="290" y2="125" class="d-line" marker-end="url(#arr)"/>
+              <circle cx="225" cy="125" r="12" class="d-valve"/>
+              <text x="225" y="88" text-anchor="middle" class="d-sub">Inflow: Q_heater</text>
+              <rect x="300" y="80" width="170" height="90" rx="16" class="d-stock"/>
+              <text x="385" y="120" text-anchor="middle" class="d-text strong">Stock</text>
+              <text x="385" y="143" text-anchor="middle" class="d-sub">Panas ruangan (T)</text>
+              <line x1="470" y1="125" x2="600" y2="125" class="d-line" marker-end="url(#arr)"/>
+              <circle cx="535" cy="125" r="12" class="d-valve"/>
+              <text x="545" y="80" text-anchor="middle" class="d-sub">Outflow:</text>
+              <text x="545" y="97" text-anchor="middle" class="d-sub">UA (T - T_luar)</text>
+              <rect x="610" y="95" width="120" height="60" rx="14" class="d-src"/>
+              <text x="670" y="130" text-anchor="middle" class="d-text">Luar ruangan</text>
+              <path d="M385 170 C385 225 535 225 535 140" class="d-line dashed" marker-end="url(#arr)"/>
+              <text x="460" y="238" text-anchor="middle" class="d-sub">Feedback negatif: T naik, kehilangan panas naik</text>
+            </svg>
+          </div>
+        </div>
+
+        <div class="card two-col">
+          <div>
+            <h2>Persamaan model</h2>
+            <pre class="formula">C * dT/dt = Q_heater - UA * (T - T_luar)
+
+dT/dt = (1/C) * [ Q_heater - UA * (T - T_luar) ]
+
+Euler       : T[k+1] = T[k] + dt * dT/dt
+Steady state: T_ss   = T_luar + Q_heater / UA
+Konstanta   : tau    = C / UA
+Analitik    : T(t)   = T_ss + (T0 - T_ss) * exp(-t / tau)</pre>
+          </div>
+          <div>
+            <h2>Asumsi</h2>
+            <ul class="plain">
+              <li>Suhu ruangan seragam di semua titik, sehingga model berupa ODE.</li>
+              <li>C dan UA konstan selama simulasi.</li>
+              <li>Tidak ada sumber panas lain (orang, peralatan, sinar matahari).</li>
+              <li>Euler stabil jika dt &lt; 2 * tau.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Tiga langkah awal Euler</h2>
+          <p class="muted">Dihitung dari parameter yang sedang aktif. Cocok untuk perhitungan manual di laporan dan video.</p>
+          <div class="table-wrap">
+            <table class="table" id="tbl-awal">
+              <thead><tr><th>Langkah</th><th>t (detik)</th><th>dT/dt (K/s)</th><th>T baru (&deg;C)</th></tr></thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <footer class="footer">
+    Pemodelan dan Simulasi &middot; Universitas Bale Bandung &middot; Teknik Informatika 4B
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+  <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>
